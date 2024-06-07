@@ -1,4 +1,4 @@
-use jlox::{run_file, run_prompt};
+use rlox::Lox;
 
 use std::env;
 use std::io;
@@ -11,9 +11,9 @@ fn main() -> io::Result<()> {
         println!("Usage: jlox [script]");
         process::exit(64);
     } else if args.len() == 2 {
-        let _ = run_file(&args[1]);
+        let _ = Lox::run_file(&args[1])?;
     } else {
-        run_prompt();
+        Lox::run_prompt()?;
     }
 
     Ok(())
