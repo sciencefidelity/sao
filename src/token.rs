@@ -1,5 +1,8 @@
 #[derive(Debug)]
-pub(crate) struct Literal;
+pub(crate) enum Literal {
+    Number(f64),
+    String(String),
+}
 
 #[derive(Clone, Debug)]
 pub(crate) enum TokenType {
@@ -53,11 +56,16 @@ pub struct Token {
 }
 
 impl Token {
-    pub fn new(token_type: TokenType, lexeme: String, line: usize) -> Self {
+    pub fn new(
+        token_type: TokenType,
+        lexeme: String,
+        literal: Option<Literal>,
+        line: usize,
+    ) -> Self {
         Self {
             token_type,
             lexeme,
-            literal: None,
+            literal,
             line,
         }
     }

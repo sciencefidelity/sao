@@ -39,8 +39,8 @@ impl Lox {
         Ok(())
     }
 
-    pub fn error(line: usize, message: String) {
-        Self::report(line, "".to_owned(), message);
+    pub fn error(line: usize, message: &str) {
+        Self::report(line, "".to_owned(), message.to_owned());
     }
 
     fn report(line: usize, r#where: String, message: String) {

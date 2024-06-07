@@ -1,4 +1,4 @@
-use crate::{Lox, Token, TokenType};
+use crate::{Literal, Lox, Token, TokenType};
 use bytes::Buf;
 use std::{collections::HashMap, io::Cursor};
 
@@ -54,7 +54,8 @@ impl Scanner {
             self.scan_token();
         }
 
-        self.tokens.push(Token::new(EOF, "".to_owned(), self.line));
+        self.tokens
+            .push(Token::new(EOF, "".to_owned(), None, self.line));
         &self.tokens
     }
 
@@ -90,7 +91,7 @@ impl Scanner {
             b'"' => self.string(),
             c if c.is_ascii_digit() => self.number(),
             c if c.is_ascii_alphabetic() => self.identifier(),
-            _ => Lox::error(self.line, "Unexpected character.".to_owned()),
+            _ => Lox::error(self.line, "Unexpected character."),
         }
     }
 
@@ -99,9 +100,7 @@ impl Scanner {
             self.get_u8();
         }
 
-        // TODO: combine with add_token() or add helper function
         let bytes = &self.src.get_ref()[self.start..self.current];
-        // TODO: fail without panic
         let text = String::from_utf8(bytes.into()).expect("failed to convert bytes to string");
         if let Some(token_type) = self.keywords.get(&text) {
             self.add_token(token_type.to_owned());
@@ -122,8 +121,9 @@ impl Scanner {
             }
         }
 
-        // TODO: find a way to convert this to f64
-        self.add_token(TokenType::Number);
+        let text = self.from_bytes(self.start, self.current);
+        let value = Literal::Number(text.parse().expect("failed to parse string to number"));
+        self.add_token_with_literal(TokenType::Number, Some(value));
     }
 
     fn string(&mut self) {
@@ -135,14 +135,13 @@ impl Scanner {
         }
 
         if !self.src.has_remaining() {
-            return Lox::error(self.line, "Unterminated string.".to_owned());
+            return Lox::error(self.line, "Unterminated string.");
         }
 
         self.get_u8();
-        self.start += 1;
-        self.current -= 1;
-        self.add_token(TokenType::String);
-        self.current += 1;
+
+        let value = Literal::String(self.from_bytes(self.start + 1, self.current - 1));
+        self.add_token_with_literal(TokenType::String, Some(value));
     }
 
     fn match_next(&mut self, expected: u8) -> bool {
@@ -176,10 +175,18 @@ impl Scanner {
         self.src.chunk()[1]
     }
 
+    fn from_bytes(&self, start: usize, end: usize) -> String {
+        let bytes = &self.src.get_ref()[start..end];
+        String::from_utf8(bytes.into()).expect("failed to convert bytes to string")
+    }
+
     fn add_token(&mut self, token_type: TokenType) {
-        let bytes = &self.src.get_ref()[self.start..self.current];
-        // TODO: fail without panic
-        let text = String::from_utf8(bytes.into()).expect("failed to convert bytes to string");
-        self.tokens.push(Token::new(token_type, text, self.line));
+        self.add_token_with_literal(token_type, None);
+    }
+
+    fn add_token_with_literal(&mut self, token_type: TokenType, literal: Option<Literal>) {
+        let text = self.from_bytes(self.start, self.current);
+        self.tokens
+            .push(Token::new(token_type, text, literal, self.line));
     }
 }
