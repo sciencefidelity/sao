@@ -7,4 +7,4 @@ mod scanner;
 pub(crate) use scanner::Scanner;
 
 mod token;
-pub(crate) use token::{Literal, Token, TokenType};
+pub(crate) use token::{Literal, Token};

@@ -1,11 +1,13 @@
+use std::fmt;
+
 #[derive(Debug)]
-pub(crate) enum Literal {
+pub enum Literal {
     Number(f64),
     String(String),
 }
 
 #[derive(Clone, Debug)]
-pub(crate) enum TokenType {
+pub enum Type {
     LeftParen,
     RightParen,
     LeftBrace,
@@ -44,34 +46,31 @@ pub(crate) enum TokenType {
     True,
     Var,
     While,
-    EOF,
+    Eof,
 }
 
 #[derive(Debug)]
 pub struct Token {
-    token_type: TokenType,
+    r#type: Type,
     lexeme: String,
     literal: Option<Literal>,
     line: usize,
 }
 
 impl Token {
-    pub fn new(
-        token_type: TokenType,
-        lexeme: String,
-        literal: Option<Literal>,
-        line: usize,
-    ) -> Self {
+    #[allow(clippy::struct_field_names)]
+    pub const fn new(r#type: Type, lexeme: String, literal: Option<Literal>, line: usize) -> Self {
         Self {
-            token_type,
+            r#type,
             lexeme,
             literal,
             line,
         }
     }
+}
 
-    // TODO: implement Display
-    pub fn to_string(&self) -> String {
-        format!("{:?} {} {:?}", self.token_type, self.lexeme, self.literal)
+impl fmt::Display for Token {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?} {} {:?}", self.r#type, self.lexeme, self.literal)
     }
 }

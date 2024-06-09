@@ -1,20 +1,17 @@
 use rlox::Lox;
-
-use std::env;
-use std::io;
-use std::process;
+use std::{env, io, process};
 
 fn main() -> io::Result<()> {
     let args: Vec<String> = env::args().collect();
 
-    if args.len() > 2 {
-        println!("Usage: jlox [script]");
-        process::exit(64);
-    } else if args.len() == 2 {
-        let _ = Lox::run_file(&args[1])?;
-    } else {
-        Lox::run_prompt()?;
-    }
+    match args.len() {
+        1 => Lox::run_prompt(),
+        2 => Lox::run_file(&args[1]),
+        _ => {
+            println!("Usage: jlox [script]");
+            process::exit(64);
+        }
+    }?;
 
     Ok(())
 }

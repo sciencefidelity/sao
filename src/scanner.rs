@@ -1,11 +1,21 @@
-use crate::{Literal, Lox, Token, TokenType};
+use crate::{token, Literal, Lox, Token};
 use bytes::Buf;
 use std::{collections::HashMap, io::Cursor};
+
+macro_rules! add_token {
+    ($self:expr, $typ:expr) => {{
+        add_token!($self, $typ, None)
+    }};
+    ($self:expr, $typ:expr, $lit:expr) => {{
+        let text = $self.string_from_bytes($self.start, $self.current);
+        $self.tokens.push(Token::new($typ, text, $lit, $self.line));
+    }};
+}
 
 pub struct Scanner {
     src: Cursor<Vec<u8>>,
     tokens: Vec<Token>,
-    keywords: HashMap<String, TokenType>,
+    keywords: HashMap<&'static str, token::Type>,
     start: usize,
     current: usize,
     line: usize,
@@ -23,31 +33,32 @@ impl Scanner {
         }
     }
 
-    pub fn keywords() -> HashMap<String, TokenType> {
-        use super::TokenType::*;
-        let keywords = HashMap::from([
-            ("and".to_owned(), And),
-            ("class".to_owned(), Class),
-            ("else".to_owned(), Else),
-            ("false".to_owned(), False),
-            ("for".to_owned(), For),
-            ("fun".to_owned(), Fun),
-            ("if".to_owned(), If),
-            ("nil".to_owned(), Nil),
-            ("or".to_owned(), Or),
-            ("print".to_owned(), Print),
-            ("return".to_owned(), Return),
-            ("super".to_owned(), Super),
-            ("this".to_owned(), This),
-            ("true".to_owned(), True),
-            ("var".to_owned(), Var),
-            ("while".to_owned(), While),
-        ]);
-        keywords
+    pub fn keywords() -> HashMap<&'static str, token::Type> {
+        #[allow(clippy::enum_glob_use)]
+        use super::token::Type::*;
+
+        HashMap::from([
+            ("and", And),
+            ("class", Class),
+            ("else", Else),
+            ("false", False),
+            ("for", For),
+            ("fun", Fun),
+            ("if", If),
+            ("nil", Nil),
+            ("or", Or),
+            ("print", Print),
+            ("return", Return),
+            ("super", Super),
+            ("this", This),
+            ("true", True),
+            ("var", Var),
+            ("while", While),
+        ])
     }
 
     pub fn scan_tokens(&mut self) -> &Vec<Token> {
-        use super::TokenType::EOF;
+        use super::token::Type::Eof;
 
         while self.src.has_remaining() {
             self.start = self.current;
@@ -55,37 +66,39 @@ impl Scanner {
         }
 
         self.tokens
-            .push(Token::new(EOF, "".to_owned(), None, self.line));
+            .push(Token::new(Eof, String::new(), None, self.line));
         &self.tokens
     }
 
     fn scan_token(&mut self) {
-        use super::TokenType::*;
+        #[allow(clippy::enum_glob_use)]
+        use super::token::Type::*;
+
         match self.get_u8() {
-            b'(' => self.add_token(LeftParen),
-            b')' => self.add_token(RightParen),
-            b'{' => self.add_token(LeftBrace),
-            b'}' => self.add_token(RightBrace),
-            b',' => self.add_token(Comma),
-            b'.' => self.add_token(Dot),
-            b'-' => self.add_token(Minus),
-            b'+' => self.add_token(Plus),
-            b';' => self.add_token(Semicolon),
-            b'*' => self.add_token(Star),
-            b'!' if self.match_next(b'=') => self.add_token(BangEqual),
-            b'!' => self.add_token(Bang),
-            b'=' if self.match_next(b'=') => self.add_token(EqualEqual),
-            b'=' => self.add_token(Equal),
-            b'<' if self.match_next(b'=') => self.add_token(LessEqual),
-            b'<' => self.add_token(Less),
-            b'>' if self.match_next(b'=') => self.add_token(GreaterEqual),
-            b'>' => self.add_token(Greater),
+            b'(' => add_token!(self, LeftParen),
+            b')' => add_token!(self, RightParen),
+            b'{' => add_token!(self, LeftBrace),
+            b'}' => add_token!(self, RightBrace),
+            b',' => add_token!(self, Comma),
+            b'.' => add_token!(self, Dot),
+            b'-' => add_token!(self, Minus),
+            b'+' => add_token!(self, Plus),
+            b';' => add_token!(self, Semicolon),
+            b'*' => add_token!(self, Star),
+            b'!' if self.match_next(b'=') => add_token!(self, BangEqual),
+            b'!' => add_token!(self, Bang),
+            b'=' if self.match_next(b'=') => add_token!(self, EqualEqual),
+            b'=' => add_token!(self, Equal),
+            b'<' if self.match_next(b'=') => add_token!(self, LessEqual),
+            b'<' => add_token!(self, Less),
+            b'>' if self.match_next(b'=') => add_token!(self, GreaterEqual),
+            b'>' => add_token!(self, Greater),
             b'/' if self.match_next(b'/') => {
                 while self.peek_u8() != b'\n' && self.src.has_remaining() {
                     self.get_u8();
                 }
             }
-            b'/' => self.add_token(Slash),
+            b'/' => add_token!(self, Slash),
             b' ' | b'\r' | b'\t' => {}
             b'\n' => self.line += 1,
             b'"' => self.string(),
@@ -101,11 +114,11 @@ impl Scanner {
         }
 
         let bytes = &self.src.get_ref()[self.start..self.current];
-        let text = String::from_utf8(bytes.into()).expect("failed to convert bytes to string");
-        if let Some(token_type) = self.keywords.get(&text) {
-            self.add_token(token_type.to_owned());
-        } else {
-            self.add_token(TokenType::Identifier);
+        let binding = String::from_utf8(bytes.into()).expect("failed to convert bytes to string");
+        let text = binding.as_str();
+        match self.keywords.get(&text) {
+            Some(token_type) => add_token!(self, token_type.to_owned()),
+            None => add_token!(self, token::Type::Identifier),
         }
     }
 
@@ -121,9 +134,9 @@ impl Scanner {
             }
         }
 
-        let text = self.from_bytes(self.start, self.current);
+        let text = self.string_from_bytes(self.start, self.current);
         let value = Literal::Number(text.parse().expect("failed to parse string to number"));
-        self.add_token_with_literal(TokenType::Number, Some(value));
+        add_token!(self, token::Type::Number, Some(value));
     }
 
     fn string(&mut self) {
@@ -140,19 +153,17 @@ impl Scanner {
 
         self.get_u8();
 
-        let value = Literal::String(self.from_bytes(self.start + 1, self.current - 1));
-        self.add_token_with_literal(TokenType::String, Some(value));
+        let value = Literal::String(self.string_from_bytes(self.start + 1, self.current - 1));
+        add_token!(self, token::Type::String, Some(value));
     }
 
     fn match_next(&mut self, expected: u8) -> bool {
-        if !self.src.has_remaining() {
-            false
-        } else if self.peek_u8() != expected {
-            false
-        } else {
+        if self.src.has_remaining() || self.peek_u8() == expected {
             self.current += 1;
             self.src.advance(1);
             true
+        } else {
+            false
         }
     }
 
@@ -175,18 +186,8 @@ impl Scanner {
         self.src.chunk()[1]
     }
 
-    fn from_bytes(&self, start: usize, end: usize) -> String {
+    fn string_from_bytes(&self, start: usize, end: usize) -> String {
         let bytes = &self.src.get_ref()[start..end];
         String::from_utf8(bytes.into()).expect("failed to convert bytes to string")
-    }
-
-    fn add_token(&mut self, token_type: TokenType) {
-        self.add_token_with_literal(token_type, None);
-    }
-
-    fn add_token_with_literal(&mut self, token_type: TokenType, literal: Option<Literal>) {
-        let text = self.from_bytes(self.start, self.current);
-        self.tokens
-            .push(Token::new(token_type, text, literal, self.line));
     }
 }
