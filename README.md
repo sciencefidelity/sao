@@ -1,3 +1,3 @@
-# jlox
+# rlox
 
-Interpreter for the Lox programming language.
+Interpreter for the Lox programming language in Rust.
