@@ -1,4 +1,4 @@
-use crate::{token, Literal, Lox, Token};
+use crate::{token, Literal, Sao, Token};
 use bytes::Buf;
 use std::{collections::HashMap, io::Cursor};
 
@@ -100,7 +100,7 @@ impl Scanner {
             b'"' => self.string(),
             c if c.is_ascii_digit() => self.number(),
             c if c.is_ascii_alphabetic() => self.identifier(),
-            _ => Lox::error(self.line, "Unexpected character."),
+            _ => Sao::error(self.line, "Unexpected character."),
         }
     }
 
@@ -144,7 +144,7 @@ impl Scanner {
         }
 
         if !self.src.has_remaining() {
-            return Lox::error(self.line, "Unterminated string.");
+            return Sao::error(self.line, "Unterminated string.");
         }
 
         self.advance();

@@ -1,3 +1,3 @@
-# rlox
+# sao
 
-Interpreter for the Lox programming language in Rust.
+Interpreter for the Sao programming language.

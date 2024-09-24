@@ -3,9 +3,9 @@ use std::fs::{self, File};
 use std::io::{self, BufReader, Cursor, Read, Write};
 use std::path::Path;
 
-pub struct Lox;
+pub struct Sao;
 
-impl Lox {
+impl Sao {
     /// # Errors
     ///
     /// Will return `Err` if `path` does not exist.
